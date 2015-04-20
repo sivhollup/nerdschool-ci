@@ -10,7 +10,7 @@
 
 ### Hent Java-løsningen
 
-1. Gå til ![](https://github.com/eaardal/nerdschool-ci) og bruk `Fork`-knappen oppe til høyre. Fork repositoriet til ditt repo (kopier repositoriet over til ditt repo).
+1. Gå til [https://github.com/eaardal/nerdschool-ci](https://github.com/eaardal/nerdschool-ci) og bruk `Fork`-knappen oppe til høyre. Fork repositoriet til ditt repo (kopier repositoriet over til ditt repo).
 2. Når det er forket, hent ned repositoriet lokalt:
 
 `git clone <url til repository du nettopp forket>`
