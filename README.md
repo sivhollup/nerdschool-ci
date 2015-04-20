@@ -1,16 +1,40 @@
-# Hent java løsningen
+# Oppstart
 
-`git clone something something`
+### Nødvendige ting
+
+- Java
+- Maven
+- Git
+- Tålmodighet
+- Godt humør
+
+### Hent Java-løsningen
+
+1. Gå til ![](https://github.com/eaardal/nerdschool-ci) og bruk `Fork`-knappen oppe til høyre. Fork repositoriet til ditt repo (kopier repositoriet over til ditt repo).
+2. Når det er forket, hent ned repositoriet lokalt:
+
+`git clone <url til repository du nettopp forket>`
+
+### Modifiser gruppe-spesifikke innstillinger
+
+For å jukse litt kjører vi alle løsningene på byggeservere, og ikke på egne servere som vi ville gjort i virkeligheten. Men siden vi kommer til å kjøre flere løsninger side om side må de ha sin egen, unike port. Du får et tildelt portnummer av instruktør.
+
+1. Åpne `POM.xml`-filen i repoet du klonet, og finn port-innstillingen til Jetty. Endre portnummer til det du ble tildelt.
+2. Lagre filen.
+
+Når alt kjører i TeamCity vil addressen til din løsning være: `http://nerdschool.cloudapp.net:PORT/`
 
 ### Bygg og start løsningen lokalt for å se at det fungerer
 
 `mvn clean install jetty:run`
 
+Om du går til `http://localhost:8080/` i nettleseren skal du nå se en "Hello World" side.
+
 # TeamCity Login
 
-### Url: [http://nerdschool.cloudapp.net/](http://nerdschool.cloudapp.net/) 
-### Bruker: public
-### Passord: Programming is fun
+#### Url: [http://nerdschool.cloudapp.net/](http://nerdschool.cloudapp.net/) 
+#### Bruker: public
+#### Passord: "red green refactor"
 
 ## Plan
 
@@ -111,23 +135,105 @@ Kommandoen for å bygge med Maven er `mvn clean install`, gitt at man står i ma
 
 Nå skal TeamCity automatisk se etter endringer i git repoet hvert 60. sekund og sette i gang `Compile & Test` byggekonfigurasjonen. Gå til `Projects`-siden og se at bygget starter og fullfører ok. Når det har fullført ok, prøv å  start det manuelt med `Run` knappen.
 
-18. Choose coverage runner: No coverage
-19. Triggers: Add new trigger -> VCS Trigger
-20. Sjekk inn en endring i git, push til GitHub og vent på at TeamCity skal trigge et bygg. TeamCity poller på ca 30 sek intervaller (kan stilles på per prosjekt).
-21. Project administration -> Create build configuration
-22. Name: Package QA
-23. Triggers -> Add new trigger -> Finish Build Trigger
-24. Build configuration: Compile & Test
-25. Trigger after successful build only -> True
-26. Build Steps -> 
-27. Project administration -> Create build configuration
-28. Name: Deploy QA
-29. Triggers -> Add new trigger
-30. Finish Build Trigger
-31. Build configuration: Package QA
-32. Build Steps -> 
+## Build Configuration: Package
 
-`mvn compile war:war`
+1. På admin-fremsiden til *gruppeprosjektet*, velg `General Settings` og `Create build configuration`
+2. Name: `Package` -> `Save`
 
-### 1.2 Test
-### 1.3 Deploy
+### Build Step 1: Package .war
+
+1. I menyen til venstre velg `Build Steps` -> `Add build step`
+2. Runner Type: `Maven`
+3. Step name: `Package war`
+4. Goals: `compile war:war`
+5. Path to POM file: `%<gruppenavn>.dropfolder%\app\POM.xml`. Nå refererer vi til POM.xml filen som ligger i dropfolderen som forrige byggesteg ("Copy to dropfolder") gjorde klar for oss.
+6. `Save`
+
+Dette vil kjøre Maven kommandoen `mvn compile war:war` som egentlig er å kompilere løsningen igjen, og pakke den sammen til et `.war`-arkiv.
+
+### Build Step 2: Copy to deploy folder
+
+1. I menyen til venstre velg `Build Steps` -> `Add build step`
+2. Runner type: `Command Line`
+3. Step name: `Copy to deploy folder`
+4. Execute step: `If all previous steps finished successfully`
+5. Custom script:
+
+```
+mkdir %<gruppenavn>.dropfolder%\deploy -p
+xcopy %<gruppenavn>.dropfolder.app.target%\ciapp-1.0-SNAPSHOT.war %system.dropfolder%\deploy /Y
+```
+
+Først oppretter vi en ny mappe som vi kan kopiere den ferdig bydge `.war`-filen som er løsningen vi skal deploye, som 1 fil. Vi gjør dette av samme grunn som vi opprettet dropfolderen tidligere, for å kunne dele filer på kryss på av byggekonfigurasjoner. Om mappen finnes, oppretter vi den på nytt (`-p`-flagget).
+
+Så kopierer vi `.war`-filen som vi lagde i forrige byggesteg, over til deploy folderen.
+
+### Trigger: Finish Build Trigger
+
+1. I menyen til venstre velg `Triggers` -> `Add new trigger`
+2. Velg `Finish build trigger` og i listen over byggekonfigurasjoner, velg `Compile & Test`-steget tilhørende gruppen din. 
+
+Dette sørger for at `Package`-konfigurasjonen starter automatisk når `Compile & Test` fullfører.
+
+## Build Configuration: Deploy
+
+1. På admin-fremsiden til *gruppeprosjektet*, velg `General Settings` og `Create build configuration`
+2. Name: `Deploy` -> `Save`
+
+### Build Step 1: Run Jetty webserver
+
+1. I menyen til venstre velg `Build Steps` -> `Add build step`
+2. Runner type: `Command Line`
+3. Step name: `Run Jetty webserver`
+4. Execute step: `If all previous steps finished successfully`
+5. Working directory: `%<gruppenavn>.dropfolder%`
+6. Custom script:
+
+```
+start "" java -jar %<gruppenavn>.app.target%\dependency\jetty-runner.jar %<gruppenavn>.app.target%\ciapp-1.0-SNAPSHOT.war
+```
+
+(Ja, med doble quotes etter Start)
+
+Dette kjører pluginen `jetty-runner` med `.war` filen vår, dvs starter løsningen i en web server.
+
+### Trigger: Finish Build Trigger
+
+1. I menyen til venstre velg `Triggers` -> `Add new trigger`
+2. Velg `Finish build trigger` og i listen over byggekonfigurasjoner, velg `Package`-steget tilhørende gruppen din.
+
+Dette sørger for at `Deploy`-konfigurasjonen starter automatisk når `Package` fullfører.
+
+# Test at det fungerer
+
+1. Gjør en endring lokalt i git repoet og push endringen til GitHub:
+	- Gjør endring
+	- `git commit -am "commit melding i doble quotes"`
+	- `git push origin master`
+2. Gå til Projects-siden (hovedsiden) i TeamCity
+3. Vent tålmodig (inntil 60 sek) og se at `Compile & Test` starter automagisk
+4. Se at `Package` steget starter automatisk når `Compile & Test` fullfører
+5. Se at `Deploy` steget starter automatisk når `Package` fullfører
+6. Gå til http://nerdschool.cloudapp.net:<din port> og se at nettsiden kjører
+
+# FAQ/Tips
+
+### Parametere og mapper
+
+Parametere er systemvariabler som referer til verdier, navn eller mapper på byggeserveren som vi kan bruke under oppsettet. F.eks så referer variabelen `%teamcity.agent.work.dir%` til mappen `C:\TeamCity\buildAgent\work` på byggeserveren, som er rotmappen for der filer TeamCity henter fra git blir lagt. 
+
+TBA TBA
+
+3. Name: `<gruppenavn>.app.target`
+4. Value: Plassering til `target`-mappen: `app\target`
+
+6. Name: `<gruppenavn>.dropfolder`
+7. Value: `%teamcity.agent.work.dir%\<gruppenavn>\`
+
+9. Name: `<gruppenavn>.dropfolder.app`
+10. Value: `app`
+
+12. Name: `<gruppenavn>.dropfolder.app.target`
+13. Value: `%system.dropfolder%\app\target`
+
+
