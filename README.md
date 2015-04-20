@@ -80,15 +80,12 @@ Vi må opprette noen slike variabler som er unike for *gruppeprosjektet*.
 2. `Add new parameter`
 3. Name: `<gruppenavn>.app.target`
 4. Value: Plassering til `target`-mappen: `app\target`
-
 5. `Add new parameter`
 6. Name: `<gruppenavn>.dropfolder`
 7. Value: `%teamcity.agent.work.dir%\<gruppenavn>\`
-
 8. `Add new parameter`
 9. Name: `<gruppenavn>.dropfolder.app`
 10. Value: `app`
-
 11. `Add new parameter`
 12. Name: `<gruppenavn>.dropfolder.app.target`
 13. Value: `%system.dropfolder%\app\target`
